@@ -49,6 +49,10 @@ max_depth = 3
                             # Subroutines #
                             ###############
 
+def dprint( x ):     # debug print
+#    print( x )
+    pass
+    
 # User should modify this regular expression match routine to return
 # True if the file name is one of the desired data file types
 
@@ -76,17 +80,17 @@ def  identify_data_files( files ):
 # Currently, this uses Jason Baumohls GBFF feature counting code
 
 def  process( name, files ):
-    #print "processing files for {0}".format( name )
-    #print files
+    dprint( "processing files for {0}".format( name ) )
+    dprint( files )
 
     contig_count = 0
     count = 0
     feature_count_dict = dict()
 
     for file in files:
-        #print "processing file {0} ...".format( file )
+        dprint( "processing file {0} ...".format( file ) )
         f = gzip.open( file, "r" )
-
+        
         for rec in SeqIO.parse( f, "genbank"):
             contig_count += 1
             for feature in rec.features:
@@ -98,11 +102,11 @@ def  process( name, files ):
         
         f.close()
 
-    print("TOTAL CONTIG COUNT " + file + " : "  + str(contig_count))
+    print("TOTAL CONTIG COUNT " + name + " : "  + str(contig_count))
     pprint.pprint(feature_count_dict)
-    print("TOTAL FEATURE COUNT " + file + " : " + str(count))
+    print("TOTAL FEATURE COUNT " + name + " : " + str(count))
 
-    #print "end processing"
+    dprint( "end processing" )
 
 
 # open, login in and cd to remote directory.
@@ -119,17 +123,17 @@ def open_ftp_link( subdir=None ):
 
 
 # 
-# this returns a list of paths which are verified subdirectories
+# this returns a list of contents which are verified subdirectories
 # 
 def  find_subdirectories( path, contents ):
 
     ftp = open_ftp_link( path )
     subdirs = []
     for file in contents:
-        #print "checking if {0} is a subdir".format( file )
+        dprint( "checking if {0} is a subdir".format( file ) )
         try:
             ftp.cwd( file )
-            subdirs.append( os.path.join( path, file ) )
+            subdirs.append( file )
             ftp.cwd( '..' )
         except ftplib.error_perm:
             print "{0} is not a directory".format( dr )
@@ -138,8 +142,8 @@ def  find_subdirectories( path, contents ):
 
 
 def collect_files( path, files ):
-    #print "collecting files "
-    #print files
+    dprint( "collecting files " )
+    dprint( files )
     for file in files:
         ftp = open_ftp_link( path )
         try:
@@ -147,46 +151,56 @@ def collect_files( path, files ):
         except:
             print "Error retrieving {0} {1}".format( path, file );
         ftp.close()
-    #print "Files have been collected."
+    dprint( "Files have been collected." )
 
 
 # Here's the recursive driver    
     
 def crawl( files, pathl=[] ):
+    dprint( "crawl:" )
+    dprint( files )
+    dprint( pathl )
     if ( len( pathl ) < max_depth ):
-        for d in files:
+        dpath = ''
+        if ( len( pathl ) > 0 ):
+            dpath = reduce( os.path.join, pathl )
+        
+        data_files = identify_data_files( files )
+        dprint( "data files:")
+        dprint( data_files )
+        
+        if len( data_files ) > 0:
+
+            # if we have ANY data files, we process them, and don't
+            # recurse
             
-            dpath = ''
-            if ( len( pathl ) > 0 ):
-                dpath = reduce( os.path.join, pathl )
-            
-            data_files = identify_data_files( files )
-            
-            if len( data_files ) > 0:
-                
-                local_directory = tempfile.mkdtemp()
-                save_dir = os.getcwd()
-                os.chdir( local_directory )
+            local_directory = tempfile.mkdtemp()
+            save_dir = os.getcwd()
+            os.chdir( local_directory )
 
-                collect_files( dpath, data_files )
+            collect_files( dpath, data_files )
 
-                process( d, data_files )
+            process( pathl[-1], data_files )
 
-                os.chdir( save_dir )
-                shutil.rmtree( local_directory )
+            os.chdir( save_dir )
+            shutil.rmtree( local_directory )
 
-            else:
+        else:
 
-                subdirs = find_subdirectories( dpath, files )
-                for sd in subdirs:
-                    dpathl = pathl + [ d ]
-                    dpath = reduce( os.path.join, dpathl )
+            # otherwise we recurse into all the subdirs that we can find.
 
-                    ftp = open_ftp_link( dpath )
-                    sub_files = ftp.nlst()
-                    ftp.close()
+            subdirs = find_subdirectories( dpath, files )
+            dprint( "subdirs:" )
+            dprint( subdirs )
+            for sd in subdirs:
+                dpathl = pathl + [ sd ]
+                dpath = reduce( os.path.join, dpathl )
 
-                    crawl( sub_files, dpathl )
+                ftp = open_ftp_link( dpath )
+                sub_files = ftp.nlst()
+                ftp.close()
+
+                crawl( sub_files, dpathl )
 
 
                             ################
