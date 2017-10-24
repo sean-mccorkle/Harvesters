@@ -35,6 +35,7 @@ import pprint
 import gzip
 from   ftplib   import FTP
 from   Bio      import Entrez, SeqIO
+from   numpy    import median,mean,max
 
 #
 # The idea is to pass these on the command line in some way,
@@ -42,6 +43,7 @@ from   Bio      import Entrez, SeqIO
 #
 base_site = "ftp.ensemblgenomes.org"
 base_dir = "pub/release-37/plants/genbank/"
+#base_dir = "pub/release-37/fungi/genbank/"
 max_depth = 3
 
 
@@ -77,7 +79,9 @@ def  identify_data_files( files ):
 # User should modify this routine for analyzing the file for one
 # organism (subdirectory)
 #
-# Currently, this uses Jason Baumohls GBFF feature counting code
+# Currently, this uses Jason Baumohls GBFF feature counting code,
+#  modified to handle multiple gzipped files, and count max feature
+#  length 
 
 def  process( name, files ):
     dprint( "processing files for {0}".format( name ) )
@@ -86,6 +90,7 @@ def  process( name, files ):
     contig_count = 0
     count = 0
     feature_count_dict = dict()
+    feature_lens_dict = dict()       # for mean, median, max
 
     for file in files:
         dprint( "processing file {0} ...".format( file ) )
@@ -94,16 +99,27 @@ def  process( name, files ):
         for rec in SeqIO.parse( f, "genbank"):
             contig_count += 1
             for feature in rec.features:
+                flen = feature.__len__()
                 if feature.type in feature_count_dict:
                     feature_count_dict[feature.type] += 1
+                    feature_lens_dict[feature.type].append( flen )
                 else:
                     feature_count_dict[feature.type] = 1
+                    feature_lens_dict[feature.type] = []
                 count += 1
         
         f.close()
 
     print("TOTAL CONTIG COUNT " + name + " : "  + str(contig_count))
-    pprint.pprint(feature_count_dict)
+    #pprint.pprint(feature_count_dict)
+    for feat in sorted( feature_lens_dict ):
+        if  len( feature_lens_dict[feat] ) > 0:
+            print "feature: {0} mean: {1} median: {2} max: {3}".format(
+                   feat, mean( feature_lens_dict[feat] ),
+                                median( feature_lens_dict[feat] ),
+                                max( feature_lens_dict[feat] ) )
+        else:
+            print "feature {0} has no lengths".format( feat )
     print("TOTAL FEATURE COUNT " + name + " : " + str(count))
 
     dprint( "end processing" )
