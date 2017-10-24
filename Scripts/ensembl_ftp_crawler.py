@@ -35,7 +35,7 @@ import pprint
 import gzip
 from   ftplib   import FTP
 from   Bio      import Entrez, SeqIO
-from   numpy    import median,mean,max
+from   numpy    import median, mean, max
 
 #
 # The idea is to pass these on the command line in some way,
@@ -114,12 +114,14 @@ def  process( name, files ):
     #pprint.pprint(feature_count_dict)
     for feat in sorted( feature_lens_dict ):
         if  len( feature_lens_dict[feat] ) > 0:
-            print "feature: {0} mean: {1} median: {2} max: {3}".format(
-                   feat, mean( feature_lens_dict[feat] ),
+            print "feature: {0} count: {1} mean: {2} median: {3} max: {4}".format(
+                   feat, feature_count_dict[feat],
+                          mean( feature_lens_dict[feat] ),
                                 median( feature_lens_dict[feat] ),
                                 max( feature_lens_dict[feat] ) )
         else:
-            print "feature {0} has no lengths".format( feat )
+            print "feature: {0} count: {1} has no lengths".format( 
+                   feat, feature_count_dict[feat] )
     print("TOTAL FEATURE COUNT " + name + " : " + str(count))
 
     dprint( "end processing" )
