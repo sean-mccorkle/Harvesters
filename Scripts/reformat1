@@ -1,0 +1,72 @@
+#!/usr/bin/env  perl
+#
+# reformats output from ensembl_ftp_crawler.py into a table
+#
+
+use Data::Dumper;
+
+$norg = 0;
+%organism = ();   # hash of a hash of features for the organism
+%features = ();   # to create a universal set of all feature names found
+
+while ( <> )
+   {
+    last if ( /Program ends./ );
+    if ( /TOTAL CONTIG COUNT (\S+) : (\d+)/ )
+       {
+        ($org,$n) = ($1,$2);
+        #print "start $org $n\n";
+	$organism{++$norg} = {};
+	$organism{$norg}->{'name'} = $org;
+        $organism{$norg}->{'ncontigs'} = $n;
+       }
+    elsif ( /TOTAL FEATURE COUNT (\S+) : (\d+)/ )
+       {
+        ($org,$n) = ($1,$2);
+        #print "end $org $n\n";
+        $organism{$norg}->{'nfeatures'} = $n;
+       }
+    elsif ( /^feature: (\S+) count: (\d+) mean: (\S+) median: (\S+) max: (\d+)/ )
+       {
+        ($key, $n, $mean, $med, $max) = ($1,$2,$3,$4,$5);
+        $mean = sprintf( "%.1f", $mean );
+        $med = sprintf( "%.1f", $med );
+        $organism{$norg}->{$key} = [ $n, $mean, $med, $max ];
+	$features{$key} += $n;
+       }
+    elsif ( /^feature: (\S+) count: (\d+) has no lengths/ )
+       {
+        ($key, $n) = ($1,$2);
+        $organism{$norg}->{$key} = [ $n, 'NA', 'NA', 'NA' ];
+	$features{$key} += $n;
+       }
+    }
+
+@feats = sort( keys( %features ) );
+
+@fcols = ();
+
+foreach $f ( @feats )
+   {
+    push( @fcols, map( $f . $_,  ( "_count", "_mean_len", "_med_len", "_max_len" ) ) );
+   }
+
+print join( "\t", "n", "name", "num_contigs", "num_features", @fcols ), "\n";
+    	       
+for ( $i = 1; $i <= $norg; $i++ )
+   {
+    print join( "\t", $i, $organism{$i}->{'name'},
+                          $organism{$i}->{'ncontigs'},
+    	                  $organism{$i}->{'features'} );
+    foreach $f ( @feats )
+       {
+        if ( defined( $organism{$i}->{$f} ) )
+            { print "\t", join( "\t", @{$organism{$i}->{$f}} ); }
+        else
+            { print "\t", join( "\t", (0,"NA","NA","NA") );  }
+       }
+    print( "\n" );
+   }
+
+
+#print "done.\n";
