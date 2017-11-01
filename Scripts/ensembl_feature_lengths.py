@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # 
-# ensembl_local_analyzer.py
+# ensembl_feature_lenghs.py
 #
-#  currently this scans one subdirectory of ensemble data file (ie for one
-#  organism) and prints out lines of
+#  currently this scans one local subdirectory of ensemble data file (ie for
+#  one organism) and prints out lines of
 #
 #            organism  feature    length
 #
@@ -59,28 +59,15 @@ def  process( name, dirname ):
     files = identify_data_files( os.listdir( dirname ) )
     dprint( files )
 
-    contig_count = 0
-    count = 0
-    feature_count_dict = dict()
-    feature_lens_dict = dict()       # for mean, median, max
-
     for file in files:
         fpath = os.path.join( dirname, file )
         dprint( "processing file {0} ...".format( fpath ) )
         f = gzip.open( fpath, "r" )
         
         for rec in SeqIO.parse( f, "genbank"):
-            contig_count += 1
             for feature in rec.features:
                 flen = feature.__len__()
-                print "{0} {1} {2}".format( name, feature.type, flen )
-                if feature.type in feature_count_dict:
-                    feature_count_dict[feature.type] += 1
-                    feature_lens_dict[feature.type].append( flen )
-                else:
-                    feature_count_dict[feature.type] = 1
-                    feature_lens_dict[feature.type] = []
-                count += 1
+                print "{0}\t{1}\t{2}".format( name, feature.type, flen )
         
         f.close()
 
